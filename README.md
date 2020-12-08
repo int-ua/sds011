@@ -1,7 +1,7 @@
 # sds011
 
 This module is a Python3 based client for the sds011 fine dust (smog) sensor.
-The sds011 is a cheap sensor from  [Nova Fitness Co., Ltd.](https://www.inovafitness.com) capable to measure pm2.5 and pm10 particle density in the air.
+The sds011 is a cheap sensor from [Nova Fitness Co., Ltd.](https://www.inovafitness.com) capable of measuring PM<sub>2.5</sub> and PM<sub>10</sub> particulates density in the air (0.3 to 10 μm).
 See the [Spec Sheet](https://cdn.sparkfun.com/assets/parts/1/2/2/7/5/Laser_Dust_Sensor_Control_Protocol_V1.3.pdf) for further info.
 
 ## some things to know about the sensor
@@ -9,14 +9,14 @@ See the [Spec Sheet](https://cdn.sparkfun.com/assets/parts/1/2/2/7/5/Laser_Dust_
 * It is active fan and takes about 100mA when the fan is running.
 * The critical component is the laser diode inside which has a lifetime of a few 1000 hours, so if using the sensor for permanent measurements, it will not last a year. 
   Setting the working period to about 5 minutes is a decent choice for granularity and lifetime.
-* The sensor usually comes with a chinese CH341 USB2.0 serial adapter which is not a problem for linux systems but for windows and mac as the drivers sometimes are hard to get.
+* The sensor usually comes with a CH341 USB2.0 serial adapter which is not a problem for Linux systems but Windows and Mac will need drivers which are hard to find sometimes.
   In case you're planning to use the sensor on windows, get an FTDI USB to 5V-TTL converter cable.
 * The sensor has 2 basic modes of operation "active" and "query".
   Only "active" mode has been tested. The low level commands for "query" are implemented are untested.
   In active mode the sensor makes a measurement every working period and sends that measurement.
   This leads to the behaviour that the sensor does not necessarily start measure after the object is generated. It stays in it's working period.
 
-# basic gui
+# basic GUI
 
 A PyQt5 APP provides basic sensor information and a plot function.
 
@@ -77,4 +77,4 @@ If the module is called with database option,
 ```
 sds = SDS011(port=port,use_database=True)
 ```
-it will write values to an sqlite database.
+it will write values to the SQLite database.

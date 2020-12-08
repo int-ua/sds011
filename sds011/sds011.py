@@ -4,17 +4,19 @@
 # https://cdn.sparkfun.com/assets/parts/1/2/2/7/5/Laser_Dust_Sensor_Control_Protocol_V1.3.pdf
 
 
-import serial
 # import time
-import threading
-from queue import Queue, Empty
-import struct
 import datetime
+import struct
+import threading
 
 from collections import OrderedDict
+from queue import Queue, Empty
 
-from sds011.utils.sockethandler import sockethandler
+import serial
+
 from sds011.utils.databasehandler import databasehandler
+from sds011.utils.sockethandler import sockethandler
+
 
 MSG_HEAD = 0xAA
 MSG_CMD_ID = 0xB4
@@ -32,15 +34,15 @@ SLEEP_OPTS = ["sleep", "work"]
 CMD_WORKING_PERIOD = 8
 CMD_FIRMWARE_Version = 7
 
-
-# The protocol has some similarities with early register access protocols,
-# - 0xB4 seems to be a flag byte to listen for a command next every listed command starts with 0xB4,
-#   maybe it defines "register access"
-# - The second data byte is the function selector
-# - The third data byte is a control byte that selects read = 0/write = 1
-# - The fourth data byte is an option selector
-#
-# - The last two bytes define the device id that is addressed by the message
+'''
+The protocol has some similarities with early register access protocols,
+- 0xB4 seems to be a flag byte to listen for a command next
+ every listed command starts with 0xB4, maybe it defines "register access"
+- The second data byte is the function selector
+- The third data byte is a control byte that selects read = 0/write = 1
+- The fourth data byte is an option selector
+- The last two bytes define the device id that is addressed by the message
+'''
 
 
 def calc_checksum(msg):
@@ -48,7 +50,10 @@ def calc_checksum(msg):
 
 
 def is_msg_valid(msg):
-    return (len(msg) > 0) and (msg[0] == MSG_HEAD) and (msg[-1] == MSG_TAIL) and (msg[-2] == calc_checksum(msg[2:-2]))
+    return (len(msg) > 0) \
+        and (msg[0] == MSG_HEAD) \
+        and (msg[-1] == MSG_TAIL) \
+        and (msg[-2] == calc_checksum(msg[2:-2]))
 
 
 def concat_msg(data):
@@ -60,7 +65,7 @@ def concat_msg(data):
     msg.extend(data)
     msg.append(calc_checksum(data))
     msg.append(MSG_TAIL)
-    #    assert(len(msg) == 19)
+    # assert(len(msg) == 19)
     return msg
 
 
@@ -176,8 +181,12 @@ class SDS011:
         cmd = CMD_SET_DATA_REPORTING
 
         if mode_select not in DATA_REPORTING_OPTS:
-            raise ValueError("invalid mode {0}, use {1}".format(mode_select, " or ".join(DATA_REPORTING_OPTS)))
-        return self.request(cmd, mode="w", options={"mode_select": mode_select})
+            raise ValueError(
+                "invalid mode {0}, use {1}".format(
+                    mode_select,
+                    " or ".join(DATA_REPORTING_OPTS)))
+        return self.request(
+            cmd, mode="w", options={"mode_select": mode_select})
 
     def get_data_reporting(self):
         cmd = CMD_SET_DATA_REPORTING
@@ -200,8 +209,12 @@ class SDS011:
     def set_sleep_work(self, mode_select="sleep"):
         cmd = CMD_SLEEP_WORK
         if mode_select not in SLEEP_OPTS:
-            raise ValueError("invalid mode {0}, use {1}".format(mode_select, " or ".join(SLEEP_OPTS)))
-        return self.request(cmd, mode="w", options={"mode_select": mode_select})
+            raise ValueError(
+                "invalid mode {0}, use {1}".format(
+                    mode_select,
+                    " or ".join(SLEEP_OPTS)))
+        return self.request(
+            cmd, mode="w", options={"mode_select": mode_select})
 
     def get_sleep_work(self):
         cmd = CMD_SLEEP_WORK
@@ -214,7 +227,8 @@ class SDS011:
         # rate in minutes, 0 is continuous
         cmd = CMD_WORKING_PERIOD
         if rate not in range(31):
-            raise ValueError("Rate {0} is out of permitted range 0-30".format(rate))
+            raise ValueError(
+                "Rate {0} is out of permitted range 0-30".format(rate))
         return self.request(cmd, mode="w", options={"rate": rate})
 
     def get_working_period(self):
@@ -229,12 +243,15 @@ class SDS011:
         if options is None:
             options = {}
         with self.request_mutex:
-            msg = concat_cmd_msg(cmd=cmd, mode=mode, options=options, device_id=self.device_id)
-            self.ser.write(msg)        
+            msg = concat_cmd_msg(
+                cmd=cmd, mode=mode, options=options, device_id=self.device_id)
+            self.ser.write(msg)
             resp = self.rx_cmd_resp_queue.get(timeout=10)
             resp_cmd = resp.get("msg_cmd")
             if resp_cmd != cmd:
-                raise NotImplementedError("waited for cmd {0} but got response to {1}".format(cmd, resp_cmd))
+                raise NotImplementedError(
+                    "waited for cmd {0} but got response to {1}".format(
+                        cmd, resp_cmd))
         return resp
 
     def handle_rx(self):
@@ -252,16 +269,19 @@ class SDS011:
                     device_id = struct.unpack(">H", msg[-4:-2])[0]
                     if msg_type == MSG_TYPE_MEASUREMENT:
                         # data msg
-                        pm2_5, pm10 = (x / 10 for x in struct.unpack("<HH", msg[2:6]))
+                        pm2_5, pm10 = (x / 10 for x in
+                                       struct.unpack("<HH", msg[2:6]))
                         item = OrderedDict([("timestamp", timestamp),
                                             ("pm2.5", pm2_5),
                                             ("pm10", pm10),
                                             ("device_id", device_id),
                                             ])
                         if self.server_socket is not None:
-                            self.server_socket.queue_tx_message(item=item)
+                            self.server_socket.queue_tx_message(
+                                item=item)
                         if self.database_handler is not None:
-                            self.database_handler.add_measurement(measurement=item)
+                            self.database_handler.add_measurement(
+                                measurement=item)
 
                         self.rx_measurement_queue.put(item=item)
 
@@ -276,22 +296,26 @@ class SDS011:
                         if msg_cmd == CMD_SET_DATA_REPORTING:
                             mode = MODE_OPTS[msg[3]]
                             mode_select = DATA_REPORTING_OPTS[msg[4]]
-                            item.update(OrderedDict([("mode", mode),
-                                                     ("mode_select", mode_select),
-                                                     ]))
+                            item.update(
+                                OrderedDict([
+                                    ("mode", mode),
+                                    ("mode_select", mode_select)]))
 
                         elif msg_cmd == CMD_QUERY_DATA:
-                            pass  # do nothing as this produces a measurement message
+                            # this produces a measurement message
+                            pass
 
                         elif msg_cmd == CMD_SET_DEVICE_ID:
-                            pass  # do nothing as the new device id is the reported device id
+                            # the new device id is the reported device id
+                            pass
 
                         elif msg_cmd == CMD_SLEEP_WORK:
                             mode = MODE_OPTS[msg[3]]
                             mode_select = SLEEP_OPTS[msg[4]]
-                            item.update(OrderedDict([("mode", mode),
-                                                     ("mode_select", mode_select),
-                                                     ]))
+                            item.update(
+                                OrderedDict([
+                                    ("mode", mode),
+                                    ("mode_select", mode_select)]))
 
                         elif msg_cmd == CMD_WORKING_PERIOD:
                             mode = MODE_OPTS[msg[3]]
@@ -302,11 +326,13 @@ class SDS011:
 
                         elif msg_cmd == CMD_FIRMWARE_Version:
                             year, month, day = msg[3:6]
-                            item.update(OrderedDict([("firmware_date", datetime.date(year + 2000, month, day)),
-                                                     ]))
-                        self.rx_cmd_resp_queue.put(item=item)  # split by command type
+                            item.update(OrderedDict([(
+                                "firmware_date",
+                                datetime.date(year + 2000, month, day))]))
+                        # split by command type
+                        self.rx_cmd_resp_queue.put(item=item)
 
-    def read_measurement(self,timeout=None):
+    def read_measurement(self, timeout=None):
         if timeout is not None:
             try:
                 meas = self.rx_measurement_queue.get(timeout=timeout)
@@ -318,11 +344,15 @@ class SDS011:
             return self.rx_measurement_queue.get()
 
     def __str__(self):
-        msg = "SDS011 Device ID: {0:04X}\nFirmware Date: {1}\nSleepWorkState: {2}\nDataReportingMode {3}".format(
-            self.device_id,
-            self.firmware,
-            self.sleep_work_state,
-            self.data_reporting_mode)
+        msg = \
+            "SDS011 Device ID: {0:04X}\n" \
+            "Firmware Date: {1}\n" \
+            "SleepWorkState: {2}\n" \
+            "DataReportingMode {3}".format(
+                self.device_id,
+                self.firmware,
+                self.sleep_work_state,
+                self.data_reporting_mode)
         return msg
 
     def __del__(self):

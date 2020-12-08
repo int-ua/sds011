@@ -205,7 +205,7 @@ class App(QWidget):
     def setRate(self):
         try:
             rate = int(self.rateedit.text())
-        except:
+        except (TypeError, ValueError):
             rate = 5
         self.settings.update({"rate": rate})
         self.val_updater.sds011.set_working_period(rate=rate)

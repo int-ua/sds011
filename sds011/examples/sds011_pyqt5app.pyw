@@ -228,7 +228,7 @@ class App(QWidget):
 
     def save_settings(self, settingsfile="settings.pkl"):
         with open(settingsfile, "wb") as f:
-            pickle.dump(f, self.settings)
+            pickle.dump(self.settings, f)
         return
 
     def update_vals(self):

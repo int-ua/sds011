@@ -26,8 +26,8 @@ from serial.tools.list_ports import comports
 
 from sds011 import SDS011
 
-default_opts = {
-    "port": None,
+DEFAULT_OPTS = {
+    "port": None,  # disable autolookup_ch341 if you define port
     "autolookup_ch341": True,
     "autoconnect": True,
     "rate": 5,
@@ -76,7 +76,7 @@ class OptionsDialog(QDialog):
         # return self.selection
 
     def get_selection(self):
-        ret = default_opts
+        ret = DEFAULT_OPTS
         ret.update({"port": self.selection})
         return ret
 
@@ -90,7 +90,7 @@ class App(QWidget):
         self.title = "sds011 dust sensor"
         self.width = 640
         self.height = 400
-        self.settings = default_opts
+        self.settings = DEFAULT_OPTS
         self.read_settings()
         self.initUI()
         if self.settings.get("autoconnect") is True:
@@ -201,7 +201,7 @@ class App(QWidget):
         self.firmware_date.setText(str(data.get("firmware_date")))
         self.sleepworkstate.setText(str(data.get("sleep_work_state")))
         self.datareportingmode.setText(str(data.get("data_reporting_mode")))
-        rate_str = str(data.get("rate", default_opts['rate']))
+        rate_str = str(data.get("rate", DEFAULT_OPTS['rate']))
         self.rate.setText(rate_str)
         self.rateedit.setText(rate_str)
         return
@@ -217,7 +217,7 @@ class App(QWidget):
         return
 
     def read_settings(self, settingsfile="settings.pkl"):
-        settings = default_opts
+        settings = DEFAULT_OPTS
         if os.path.exists(settingsfile):
             with open(settingsfile, "rb") as f:
                 settings = pickle.load(f)

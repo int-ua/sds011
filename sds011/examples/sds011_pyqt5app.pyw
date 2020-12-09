@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # file: sds011_pyqt5app.pyw
 # author: (C) Patrick Menschel 2018
 # purpose: a simple gui to play with the sds011 sensor
@@ -27,7 +27,7 @@ from serial.tools.list_ports import comports
 from sds011 import SDS011
 
 default_opts = {
-    "port": "/dev/ttyUSB0",
+    "port": None,
     "autolookup_ch341": True,
     "autoconnect": True,
     "rate": 5,
@@ -185,8 +185,11 @@ class App(QWidget):
             if self.settings.get("port") is None:
                 raise NotImplementedError(
                     "Could not determine the port with CH341")
+        if not os.access(self.settings.get("port"), os.R_OK):
+            raise NotImplementedError(
+                "Could not open {}".format(self.settings.get("port")))
         self.portedit.setText(self.settings.get("port"))
-        self.val_updater = measurement_getter(settings=self.settings)
+        self.val_updater = MeasurementGetter(settings=self.settings)
         self.val_updater.update_event.connect(self.update_vals)
         self.val_updater.start()
         self.get_sensor_data()
@@ -198,8 +201,9 @@ class App(QWidget):
         self.firmware_date.setText(str(data.get("firmware_date")))
         self.sleepworkstate.setText(str(data.get("sleep_work_state")))
         self.datareportingmode.setText(str(data.get("data_reporting_mode")))
-        self.rate.setText(str(data.get("rate")))
-        self.rateedit.setText(str(data.get("rate")))
+        rate_str = str(data.get("rate", default_opts['rate']))
+        self.rate.setText(rate_str)
+        self.rateedit.setText(rate_str)
         return
 
     def setRate(self):
@@ -242,7 +246,7 @@ class App(QWidget):
         return
 
 
-class measurement_getter(QThread):
+class MeasurementGetter(QThread):
 
     update_event = pyqtSignal()
 

@@ -356,5 +356,5 @@ class SDS011:
         return msg
 
     def __del__(self):
-        if self.server_socket is not None:
+        if hasattr(self, 'server_socket'):
             self.server_socket.__del__()

@@ -124,7 +124,7 @@ class App(QWidget):
         datareportinglabel.setText("Data reporting mode")
         self.datareportingmode = QLabel()
         ratelabel = QLabel()
-        ratelabel.setText("Rate")
+        ratelabel.setText("Rate (minutes between measurements)")
         self.rate = QLabel()
 
         self.rateedit = QLineEdit()

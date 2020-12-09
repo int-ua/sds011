@@ -33,6 +33,8 @@ DEFAULT_OPTS = {
     "rate": 5,
     "interval": timedelta(hours=1),
 }
+DATA_FILENAME = 'sds011_data.pkl'
+SETTINGS_FILENAME = 'sds011_settings.pkl'
 
 
 class OptionsDialog(QDialog):
@@ -68,7 +70,6 @@ class OptionsDialog(QDialog):
 
     def on_toggle(self, b):
         self.selection = b
-        return
 
     def on_ok(self):
         print(self.selection)
@@ -173,7 +174,6 @@ class App(QWidget):
         if od.exec_():
             self.settings.update(od.get_selection())
         self.save_settings()
-        return
 
     def setup_port(self):
         if (self.settings.get("autolookup_ch341") is True):
@@ -193,7 +193,6 @@ class App(QWidget):
         self.val_updater.update_event.connect(self.update_vals)
         self.val_updater.start()
         self.get_sensor_data()
-        return
 
     def get_sensor_data(self):
         data = self.val_updater.sds011.get_sensor_data()
@@ -204,7 +203,6 @@ class App(QWidget):
         rate_str = str(data.get("rate", DEFAULT_OPTS['rate']))
         self.rate.setText(rate_str)
         self.rateedit.setText(rate_str)
-        return
 
     def setRate(self):
         try:
@@ -214,9 +212,8 @@ class App(QWidget):
         self.settings.update({"rate": rate})
         self.val_updater.sds011.set_working_period(rate=rate)
         self.rate.setText(str(rate))
-        return
 
-    def read_settings(self, settingsfile="settings.pkl"):
+    def read_settings(self, settingsfile=SETTINGS_FILENAME):
         settings = DEFAULT_OPTS
         if os.path.exists(settingsfile):
             with open(settingsfile, "rb") as f:
@@ -224,12 +221,10 @@ class App(QWidget):
             if isinstance(settings, dict):
                 self.settings.update(
                     {key: settings.get(key) for key in settings})
-        return
 
-    def save_settings(self, settingsfile="settings.pkl"):
+    def save_settings(self, settingsfile=SETTINGS_FILENAME):
         with open(settingsfile, "wb") as f:
             pickle.dump(self.settings, f)
-        return
 
     def update_vals(self):
         vals = self.val_updater.meas
@@ -243,7 +238,6 @@ class App(QWidget):
         status = self.val_updater.sensor_status
         if status:
             self.sleepworkstate.setText(str(status))
-        return
 
 
 class MeasurementGetter(QThread):
@@ -281,9 +275,10 @@ class PlotCanvas(FigureCanvas):
         FigureCanvas.setSizePolicy(
             self, QSizePolicy.Expanding, QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
-        self.timestamps = []
-        self.pm2_5vals = []
-        self.pm10vals = []
+        initial_data = self.read_data()
+        self.timestamps = initial_data['timestamps']
+        self.pm2_5vals = initial_data['pm2_5vals']
+        self.pm10vals = initial_data['pm10vals']
         self.interval = interval
         self.ax = self.figure.add_subplot(111)
         self.ax.set_title('SDS011 Data Plot')
@@ -304,14 +299,33 @@ class PlotCanvas(FigureCanvas):
         if init_legend is True:
             self.ax.legend()
         self.draw()
-        return
 
     def update_plot(self, timestamp, pm2_5, pm10):
         self.timestamps.append(timestamp)
         self.pm2_5vals.append(pm2_5)
         self.pm10vals.append(pm10)
         self.plot()
-        return
+        self.save_data()
+
+    def save_data(self, filename=DATA_FILENAME):
+        data = {
+            'timestamps': self.timestamps,
+            'pm2_5vals': self.pm2_5vals,
+            'pm10vals': self.pm10vals,
+        }
+        with open(filename, 'wb') as f:
+            pickle.dump(data, f)
+
+    def read_data(self, filename=DATA_FILENAME):
+        try:
+            with open(filename, 'rb') as f:
+                return pickle.load(f)
+        except (FileNotFoundError, PermissionError, OSError):
+            return {
+                'timestamps': [],
+                'pm2_5vals': [],
+                'pm10vals': [],
+            }
 
 
 if __name__ == '__main__':
